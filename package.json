@@ -1,0 +1,42 @@
+{
+  "name": "NoteMaker",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "electron ."
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@tiptap/core": "^3.23.4",
+    "@tiptap/extension-bold": "^3.23.4",
+    "@tiptap/extension-bullet-list": "^3.23.4",
+    "@tiptap/extension-document": "^3.23.4",
+    "@tiptap/extension-italic": "^3.23.4",
+    "@tiptap/extension-list-item": "^3.23.4",
+    "@tiptap/extension-paragraph": "^3.23.4",
+    "@tiptap/extension-text": "^3.23.4",
+    "@tiptap/react": "^3.23.4",
+    "@tiptap/starter-kit": "^3.23.4",
+    "lodash.debounce": "^4.0.8",
+    "lowdb": "^7.0.1",
+    "sqlite3": "^6.0.1",
+    "uuid": "^14.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^4.7.0",
+    "electron": "^28.3.3",
+    "electron-builder": "^26.8.1",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "vite": "^6.4.2"
+  }
+}
