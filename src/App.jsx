@@ -8,7 +8,7 @@ import debounce from 'lodash.debounce';
 function App() {
   const [folders, setFolders] = useState([]);
   const [notes, setNotes] = useState([]);
-  const [activeFolderId, setActiveFolderId] = useState('1');
+  const [selectedFolder, setSelectedFolder] = useState('1');
   const [activeNoteId, setActiveNoteId] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -26,11 +26,11 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const activeFolder = folders.find(f => f.id === activeFolderId);
+    const activeFolder = folders.find(f => f.id === selectedFolder);
     if (activeFolder) {
       document.documentElement.style.setProperty('--sidebar-accent', activeFolder.color + '33');
     }
-  }, [activeFolderId, folders]);
+  }, [selectedFolder, folders]);
 
   const activeNote = notes.find(n => n.id === activeNoteId);
 
@@ -40,11 +40,10 @@ function App() {
     }
   }, [activeNote]);
 
-  const filteredNotes = notes.filter(n => {
-    const matchesFolder = activeFolderId === 'all' || n.folderId === activeFolderId;
-    const matchesSearch = (n.title || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          (n.preview || '').toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesFolder && matchesSearch;
+  const sortedNotes = [...notes].sort((a, b) => {
+    const dateA = a.createdAt ? new Date(a.createdAt) : 0;
+    const dateB = b.createdAt ? new Date(b.createdAt) : 0;
+    return dateB - dateA;
   });
 
   const debouncedSave = useCallback(
@@ -62,42 +61,29 @@ function App() {
     debouncedSave(updatedNote);
   };
 
-  const handleNewNote = async () => {
-    const newNote = {
-      id: uuidv4(),
-      folderId: activeFolderId === 'all' ? '1' : activeFolderId,
-      title: 'New Note',
-      date: new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' }),
-      content_html: '',
-      preview: '',
-      bg_color: '#ffffff',
-      media: []
-    };
-    
-    await window.electron.dbSaveNote(newNote);
-    await loadData();
-    setActiveNoteId(newNote.id);
-  };
-
   return (
     <div className="flex h-screen w-full">
       <Sidebar 
         folders={folders} 
-        activeFolderId={activeFolderId} 
-        setActiveFolderId={setActiveFolderId} 
-        onNewNote={handleNewNote}
+        notes={notes}
+        selectedFolder={selectedFolder} 
+        setSelectedFolder={setSelectedFolder} 
+        refresh={loadData}
       />
       <NoteList 
-        notes={filteredNotes} 
+        notes={sortedNotes} 
+        folders={folders}
+        selectedFolder={selectedFolder}
         activeNoteId={activeNoteId} 
         setActiveNoteId={setActiveNoteId} 
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
+        refresh={loadData}
       />
       <Editor 
         note={activeNote} 
         onUpdate={handleUpdateNote} 
-        folderName={folders.find(f => f.id === activeNote?.folderId)?.name}
+        folderName={folders.find(f => f.id === activeNote?.folderId)?.name || (activeNote?.folderId === 'trash' ? 'Trash' : '')}
       />
     </div>
   );

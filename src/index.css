@@ -1,1 +1,2 @@
-/* Tailwind is loaded via CDN in index.html, but we can add custom global styles here if needed */
+.drag-region { -webkit-app-region: drag; }
+.no-drag { -webkit-app-region: no-drag; }

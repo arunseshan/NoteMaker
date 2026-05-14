@@ -9,10 +9,11 @@ export default defineConfig({
     strictPort: true,
     fs: {
       // Allows Vite to serve media files from your Application Support folder
-      allow: ['..'] 
+      allow: ['..']
     }
   },
   build: {
     outDir: 'dist',
+    chunkSizeWarningLimit: 1000,
   },
 })
