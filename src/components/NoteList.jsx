@@ -1,26 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import ConfirmModal from './ConfirmModal';
 
-function NoteList({ notes, folders, selectedFolder, activeNoteId, setActiveNoteId, searchQuery, setSearchQuery, refresh }) {
+function NoteList({ notes, folders, selectedFolder, activeNoteId, setActiveNoteId, searchQuery, setSearchQuery, refresh, onCreateNote }) {
   const [dialog, setDialog] = useState({ isOpen: false, message: "", icon: "", action: null });
+  const searchInputRef = useRef(null);
 
-  const handleCreateNote = async () => {
-    const newNote = {
-      id: Date.now().toString(),
-      title: 'Untitled Note',
-      content_html: '',
-      preview: '',
-      folderId: selectedFolder === 'trash' ? '1' : selectedFolder,
-      createdAt: new Date().toISOString(),
-      date: new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' }),
-      bg_color: '#ffffff',
-      media: []
-    };
-    
-    await window.electron.dbSaveNote(newNote);
-    refresh();
-    setActiveNoteId(newNote.id);
-  };
+  const createNoteRef = useRef(onCreateNote);
+  createNoteRef.current = onCreateNote;
+
+  useEffect(() => {
+    window.electron.onSearchNotes(() => {
+      searchInputRef.current?.focus();
+    });
+
+    window.electron.onNewNote(() => {
+      createNoteRef.current();
+    });
+  }, []);
 
   const handleToggleTrash = async (e, noteId, isTrash) => {
     e.stopPropagation();
@@ -97,7 +93,7 @@ function NoteList({ notes, folders, selectedFolder, activeNoteId, setActiveNoteI
       <div className="h-14 flex items-center justify-between px-4 border-b border-outline-variant/30 bg-surface/50 backdrop-blur-md drag-region">
         <h2 className="text-body-md font-bold text-on-surface">Notes</h2>
         <button 
-          onClick={handleCreateNote}
+          onClick={onCreateNote}
           className="p-2 hover:bg-primary/5 text-primary rounded-lg transition-colors flex items-center gap-2 no-drag"
           title="New Note"
         >
@@ -108,6 +104,7 @@ function NoteList({ notes, folders, selectedFolder, activeNoteId, setActiveNoteI
         <div className="relative w-full">
           <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[16px]">search</span>
           <input 
+            ref={searchInputRef}
             className="w-full bg-gray-100 border-none rounded-lg py-1.5 pl-9 pr-4 text-[13px] focus:ring-1 focus:ring-primary/30 placeholder:text-outline" 
             placeholder="Search notes..." 
             type="text"

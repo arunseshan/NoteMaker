@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Sidebar from './components/Sidebar';
 import NoteList from './components/NoteList';
 import Editor from './components/Editor';
+import CommandPalette from './components/CommandPalette';
 import { v4 as uuidv4 } from 'uuid';
 import debounce from 'lodash.debounce';
 
@@ -11,6 +12,7 @@ function App() {
   const [selectedFolder, setSelectedFolder] = useState('1');
   const [activeNoteId, setActiveNoteId] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isCmdKOpen, setIsCmdKOpen] = useState(false);
 
   const loadData = async () => {
     const data = await window.electron.dbRead();
@@ -23,6 +25,12 @@ function App() {
 
   useEffect(() => {
     loadData();
+  }, []);
+
+  useEffect(() => {
+    window.electron.onCommandPalette(() => {
+      setIsCmdKOpen(prev => !prev);
+    });
   }, []);
 
   useEffect(() => {
@@ -61,6 +69,24 @@ function App() {
     debouncedSave(updatedNote);
   };
 
+  const handleCreateNote = async () => {
+    const newNote = {
+      id: Date.now().toString(),
+      title: 'Untitled Note',
+      content_html: '',
+      preview: '',
+      folderId: selectedFolder === 'trash' ? '1' : selectedFolder,
+      createdAt: new Date().toISOString(),
+      date: new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' }),
+      bg_color: '#ffffff',
+      media: []
+    };
+    
+    await window.electron.dbSaveNote(newNote);
+    await loadData();
+    setActiveNoteId(newNote.id);
+  };
+
   return (
     <div className="flex h-screen w-full">
       <Sidebar 
@@ -79,11 +105,19 @@ function App() {
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         refresh={loadData}
+        onCreateNote={handleCreateNote}
       />
       <Editor 
         note={activeNote} 
         onUpdate={handleUpdateNote} 
         folderName={folders.find(f => f.id === activeNote?.folderId)?.name || (activeNote?.folderId === 'trash' ? 'Trash' : '')}
+      />
+      <CommandPalette 
+        isOpen={isCmdKOpen}
+        onClose={() => setIsCmdKOpen(false)}
+        notes={notes}
+        onSelectNote={(id) => setActiveNoteId(id)}
+        onCreateNote={handleCreateNote}
       />
     </div>
   );

@@ -4,6 +4,7 @@ import StarterKit from '@tiptap/starter-kit';
 
 function Editor({ note, onUpdate, folderName }) {
   const fileInputRef = useRef(null);
+  const titleRef = useRef(null);
 
   const editor = useEditor({
     extensions: [StarterKit],
@@ -24,6 +25,13 @@ function Editor({ note, onUpdate, folderName }) {
       },
     },
   });
+
+  useEffect(() => {
+    if (note && note.title === 'Untitled Note') {
+      titleRef.current?.focus();
+    }
+  }, [note?.id]);
+
   const handleDeleteMedia = async (urlToDelete) => {
   if (!note) return;
   
@@ -133,6 +141,7 @@ function Editor({ note, onUpdate, folderName }) {
           {/* Editor Header */}
           <div className="mb-12">
             <input 
+              ref={titleRef}
               className="w-full bg-transparent border-none p-0 text-[32px] font-bold text-on-surface focus:ring-0 placeholder:text-gray-200" 
               placeholder="Title" 
               type="text" 

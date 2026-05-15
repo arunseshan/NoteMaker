@@ -8,7 +8,31 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "start": "electron ."
+    "start": "electron .",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "package": "vite build && electron-builder --mac"
+  },
+  "build": {
+    "appId": "com.xtnds.notemaker",
+    "productName": "NoteMaker",
+    "copyright": "Copyright © 2026 Arun Raghunathan Seshan",
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.productivity",
+      "icon": "build/icon.icns"
+    },
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "main.js",
+      "preload.js",
+      "package.json",
+      "node_modules/**/*"
+    ],
+    "asar": true
   },
   "keywords": [],
   "author": "",
@@ -31,13 +55,18 @@
     "uuid": "^14.0.0"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^4.7.0",
+    "@vitest/ui": "^4.1.6",
     "electron": "^28.3.3",
     "electron-builder": "^26.8.1",
+    "happy-dom": "^20.9.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
-    "vite": "^6.4.2"
+    "vite": "^6.4.2",
+    "vitest": "^4.1.6"
   }
 }

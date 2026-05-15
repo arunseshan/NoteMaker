@@ -12,4 +12,21 @@ contextBridge.exposeInMainWorld('electron', {
   dbHardDeleteFolder: (id) => ipcRenderer.invoke('db:hard-delete-folder', id),
   mediaUpload: (filePath) => ipcRenderer.invoke('media:upload', filePath),
   mediaDelete: (url) => ipcRenderer.invoke('media:delete', url),
+  exportData: () => ipcRenderer.invoke('db:export-data'),
+  onNewNote: (callback) => {
+    ipcRenderer.removeAllListeners('shortcut:new-note');
+    ipcRenderer.on('shortcut:new-note', callback);
+  },
+  onDeleteNote: (callback) => {
+    ipcRenderer.removeAllListeners('shortcut:delete-note');
+    ipcRenderer.on('shortcut:delete-note', callback);
+  },
+  onSearchNotes: (callback) => {
+    ipcRenderer.removeAllListeners('shortcut:search-notes');
+    ipcRenderer.on('shortcut:search-notes', callback);
+  },
+  onCommandPalette: (callback) => {
+    ipcRenderer.removeAllListeners('shortcut:command-palette');
+    ipcRenderer.on('shortcut:command-palette', callback);
+  },
 });

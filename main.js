@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, protocol, net, Menu } from 'electron';
+import { app, BrowserWindow, ipcMain, protocol, net, Menu, dialog } from 'electron';
 import nodeCrypto from 'node:crypto';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
@@ -16,15 +16,15 @@ app.name = "NoteMaker";
 
 // Register protocol at the very top
 protocol.registerSchemesAsPrivileged([
-  { 
-    scheme: 'media', 
-    privileges: { 
-      standard: true, 
-      secure: true, 
-      supportFetchAPI: true, 
-      bypassCSP: true, 
-      stream: true 
-    } 
+  {
+    scheme: 'media',
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      bypassCSP: true,
+      stream: true
+    }
   }
 ]);
 
@@ -53,8 +53,10 @@ async function initDb() {
   }
 }
 
+let win;
+
 function createWindow() {
-  const win = new BrowserWindow({
+  win = new BrowserWindow({
     width: 1200,
     height: 800,
     webPreferences: {
@@ -65,7 +67,13 @@ function createWindow() {
     titleBarStyle: 'hiddenInset',
   });
 
-  win.loadFile(path.join(__dirname, 'dist', 'index.html'));
+  const isDev = !app.isPackaged;
+  if (isDev) {
+    win.loadURL('http://localhost:5173');
+    //win.webContents.openDevTools();
+  } else {
+    win.loadFile(path.join(__dirname, 'dist', 'index.html'));
+  }
 }
 
 // 2. App Lifecycle
@@ -90,7 +98,42 @@ app.whenReady().then(async () => {
 
   const template = [
     { label: app.name, submenu: [{ role: 'about' }, { type: 'separator' }, { role: 'services' }, { type: 'separator' }, { role: 'hide' }, { role: 'hideOthers' }, { role: 'unhide' }, { type: 'separator' }, { role: 'quit' }] },
-    { label: 'Edit', submenu: [{ role: 'undo' }, { role: 'redo' }, { type: 'separator' }, { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }] }
+    {
+      label: 'Edit',
+      submenu: [
+        { role: 'undo', accelerator: 'CmdOrCtrl+Z' },
+        { role: 'redo', accelerator: 'Shift+CmdOrCtrl+Z' },
+        { type: 'separator' },
+        { role: 'cut', accelerator: 'CmdOrCtrl+X' },
+        { role: 'copy', accelerator: 'CmdOrCtrl+C' },
+        { role: 'paste', accelerator: 'CmdOrCtrl+V' },
+        { role: 'selectAll', accelerator: 'CmdOrCtrl+A' }
+      ]
+    },
+    {
+      label: 'View',
+      submenu: [
+        { role: 'reload' },
+        { role: 'forceReload' },
+        { role: 'toggleDevTools' },
+        { type: 'separator' },
+        { role: 'resetZoom' },
+        { role: 'zoomIn' },
+        { role: 'zoomOut' },
+        { type: 'separator' },
+        { role: 'togglefullscreen' }
+      ]
+    },
+    {
+      label: 'Note',
+      submenu: [
+        { label: 'New Note', accelerator: 'CmdOrCtrl+N', click: () => { win.webContents.send('shortcut:new-note') } },
+        { label: 'Delete Note', accelerator: 'CmdOrCtrl+Backspace', click: () => { win.webContents.send('shortcut:delete-note') } },
+        { type: 'separator' },
+        { label: 'Search Notes', accelerator: 'CmdOrCtrl+F', click: () => { win.webContents.send('shortcut:search-notes') } },
+        { label: 'Command Palette', accelerator: 'CmdOrCtrl+K', click: () => { win.webContents.send('shortcut:command-palette') } }
+      ]
+    }
   ];
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 
@@ -195,4 +238,57 @@ ipcMain.handle('db:hard-delete-folder', async (event, folderId) => {
   db.data.notes = db.data.notes.filter(n => n.folderId !== folderId);
   await db.write();
   return db.data;
+});
+
+ipcMain.handle('db:export-data', async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog(win, {
+    title: 'Select Export Destination',
+    properties: ['openDirectory', 'createDirectory']
+  });
+  
+  if (canceled || filePaths.length === 0) return { success: false, message: 'Export canceled.' };
+  
+  const exportDir = path.join(filePaths[0], `NoteMaker_Export_${new Date().toISOString().split('T')[0]}`);
+  
+  try {
+    if (!fs.existsSync(exportDir)) fs.mkdirSync(exportDir);
+    
+    await db.read();
+    const { folders, notes } = db.data;
+    
+    // Create directories for each active folder
+    const folderMap = { 'trash': 'Trash', 'unassigned': 'Uncategorized' };
+    folders.forEach(f => {
+      if (!f.isTrash) {
+        folderMap[f.id] = f.name.replace(/[^a-z0-9]/gi, '_'); 
+        const folderPath = path.join(exportDir, folderMap[f.id]);
+        if (!fs.existsSync(folderPath)) fs.mkdirSync(folderPath);
+      }
+    });
+    
+    // Ensure Trash and Uncategorized exist if needed
+    ['Trash', 'Uncategorized'].forEach(name => {
+      const p = path.join(exportDir, name);
+      if (!fs.existsSync(p)) fs.mkdirSync(p);
+    });
+    
+    // Write notes to files
+    notes.forEach(note => {
+      const folderName = folderMap[note.folderId] || (note.isTrash ? 'Trash' : 'Uncategorized');
+      const safeTitle = (note.title || 'Untitled').replace(/[^a-z0-9]/gi, '_');
+      const fileName = `${safeTitle}_${note.id.substring(0,4)}.md`;
+      const filePath = path.join(exportDir, folderName, fileName);
+      
+      // Basic HTML to Text cleanup for the markdown file
+      const contentText = note.content_html ? note.content_html.replace(/<[^>]+>/g, '\n').replace(/\n+/g, '\n') : '';
+      
+      const fileContent = `# ${note.title}\nCreated: ${new Date(note.createdAt).toLocaleString()}\n\n${contentText}`;
+      fs.writeFileSync(filePath, fileContent, 'utf-8');
+    });
+    
+    return { success: true, message: `Successfully exported to ${exportDir}` };
+  } catch (error) {
+    console.error('Export failed:', error);
+    return { success: false, message: 'Export failed due to an error.' };
+  }
 });
