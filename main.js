@@ -37,18 +37,22 @@ let db;
 async function initDb() {
   const file = path.join(app.getPath('userData'), 'db.json');
   const adapter = new JSONFile(file);
-  db = new Low(adapter, { folders: [], notes: [] });
+  
+  // Define the default data directly inside the Lowdb instantiation
+  db = new Low(adapter, {
+    folders: [
+      { id: '1', name: 'Personal', color: '#a43b2f' },
+      { id: '2', name: 'Work', color: '#006b5a' },
+      { id: '3', name: 'Ideas', color: '#ff7f6e' },
+      { id: '4', name: 'Travel', color: '#fcd664' }
+    ],
+    notes: []
+  });
+  
   await db.read();
-  if (!db.data) {
-    db.data = {
-      folders: [
-        { id: '1', name: 'Personal', color: '#a43b2f' },
-        { id: '2', name: 'Work', color: '#006b5a' },
-        { id: '3', name: 'Ideas', color: '#ff7f6e' },
-        { id: '4', name: 'Travel', color: '#fcd664' }
-      ],
-      notes: []
-    };
+  
+  // Physically commit the default structure to disk immediately if it's a brand new file
+  if (!fs.existsSync(file)) {
     await db.write();
   }
 }
@@ -179,6 +183,28 @@ ipcMain.handle('media:delete', async (event, mediaUrl) => {
   } catch (error) {
     return false;
   }
+});
+
+ipcMain.handle('media:choose', async (event, type) => {
+  let filters = [];
+  if (type === 'image') filters = [{ name: 'Images', extensions: ['jpg', 'jpeg', 'png', 'gif', 'webp'] }];
+  else if (type === 'audio') filters = [{ name: 'Audio', extensions: ['mp3', 'wav', 'ogg', 'm4a'] }];
+  else if (type === 'video') filters = [{ name: 'Video', extensions: ['mp4', 'webm', 'mov'] }];
+  
+  const { canceled, filePaths } = await dialog.showOpenDialog(win, {
+    title: `Select ${type}`,
+    filters: filters,
+    properties: ['openFile']
+  });
+  
+  if (canceled || filePaths.length === 0) return null;
+  
+  const filePath = filePaths[0];
+  const fileName = path.basename(filePath);
+  if (!fs.existsSync(mediaDir)) fs.mkdirSync(mediaDir, { recursive: true });
+  const destPath = path.join(mediaDir, fileName);
+  fs.copyFileSync(filePath, destPath);
+  return `media://${fileName}`;
 });
 
 ipcMain.handle('db:trash-note', async (event, noteId) => {

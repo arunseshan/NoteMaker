@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('electron', {
   dbHardDeleteFolder: (id) => ipcRenderer.invoke('db:hard-delete-folder', id),
   mediaUpload: (filePath) => ipcRenderer.invoke('media:upload', filePath),
   mediaDelete: (url) => ipcRenderer.invoke('media:delete', url),
+  mediaChoose: (type) => ipcRenderer.invoke('media:choose', type),
   exportData: () => ipcRenderer.invoke('db:export-data'),
   onNewNote: (callback) => {
     ipcRenderer.removeAllListeners('shortcut:new-note');
